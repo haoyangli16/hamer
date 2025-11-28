@@ -2,7 +2,10 @@ import os
 from typing import Dict
 from yacs.config import CfgNode as CN
 
-CACHE_DIR_HAMER = "./_DATA"
+# Allow override via environment variable for Docker/mounted setups
+# Default to relative path for backward compatibility
+CACHE_DIR_HAMER = os.getenv("HAMER_DATA_DIR", "./_DATA")
+
 
 def to_lower(x: Dict) -> Dict:
     """
@@ -13,6 +16,7 @@ def to_lower(x: Dict) -> Dict:
       dict: Output dictionary with all keys converted to lowercase
     """
     return {k.lower(): v for k, v in x.items()}
+
 
 _C = CN(new_allowed=True)
 
@@ -63,6 +67,7 @@ _C.DATASETS.CONFIG.DO_FLIP = False
 _C.DATASETS.CONFIG.FLIP_AUG_RATE = 0.5
 _C.DATASETS.CONFIG.EXTREME_CROP_AUG_RATE = 0.10
 
+
 def default_config() -> CN:
     """
     Get a yacs CfgNode object with the default config values.
@@ -71,7 +76,8 @@ def default_config() -> CN:
     # This is for the "local variable" use pattern
     return _C.clone()
 
-def dataset_config(name='datasets_tar.yaml') -> CN:
+
+def dataset_config(name="datasets_tar.yaml") -> CN:
     """
     Get dataset config file
     Returns:
@@ -83,10 +89,14 @@ def dataset_config(name='datasets_tar.yaml') -> CN:
     cfg.freeze()
     return cfg
 
-def dataset_eval_config() -> CN:
-    return dataset_config('datasets_eval.yaml')
 
-def get_config(config_file: str, merge: bool = True, update_cachedir: bool = False) -> CN:
+def dataset_eval_config() -> CN:
+    return dataset_config("datasets_eval.yaml")
+
+
+def get_config(
+    config_file: str, merge: bool = True, update_cachedir: bool = False
+) -> CN:
     """
     Read a config file and optionally merge it with the default config file.
     Args:
@@ -96,19 +106,20 @@ def get_config(config_file: str, merge: bool = True, update_cachedir: bool = Fal
       CfgNode: Config as a yacs CfgNode object.
     """
     if merge:
-      cfg = default_config()
+        cfg = default_config()
     else:
-      cfg = CN(new_allowed=True)
+        cfg = CN(new_allowed=True)
     cfg.merge_from_file(config_file)
 
     if update_cachedir:
-      def update_path(path: str) -> str:
-        if os.path.isabs(path):
-          return path
-        return os.path.join(CACHE_DIR_HAMER, path)
 
-      cfg.MANO.MODEL_PATH = update_path(cfg.MANO.MODEL_PATH)
-      cfg.MANO.MEAN_PARAMS = update_path(cfg.MANO.MEAN_PARAMS)
+        def update_path(path: str) -> str:
+            if os.path.isabs(path):
+                return path
+            return os.path.join(CACHE_DIR_HAMER, path)
+
+        cfg.MANO.MODEL_PATH = update_path(cfg.MANO.MODEL_PATH)
+        cfg.MANO.MEAN_PARAMS = update_path(cfg.MANO.MEAN_PARAMS)
 
     cfg.freeze()
     return cfg
